@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:staff_flutter/database_provider.dart';
 import 'package:staff_flutter/employee.dart';
 import 'package:staff_flutter/employee_child.dart';
 
@@ -20,15 +21,13 @@ class _EmployeesChildrenRouteState extends State<EmployeesChildrenRoute> {
   List<EmployeeChild> _listOfEmployeesChildren = [];
 
   @override
-  Future<void> didChangeDependencies() async {
+  void didChangeDependencies() async {
     super.didChangeDependencies();
     if (_listOfEmployeesChildren.isEmpty) {
-      await _retrieveEmployees();
+      _listOfEmployeesChildren =
+          await DBProvider.db.getEmployeeChild(widget.parent.id);
     }
-  }
-
-  Future<void> _retrieveEmployees() async {
-    _listOfEmployeesChildren.addAll(widget.parent.children);
+    setState(() {});
   }
 
   @override
@@ -82,26 +81,29 @@ class _EmployeesChildrenRouteState extends State<EmployeesChildrenRoute> {
                     child: Text('Добавить ребёнка'),
                     color: Colors.red,
                     textColor: Colors.white,
-                    onPressed: () {
-                      setState(() {
-                        if (_surnameController.text.isEmpty ||
-                            _nameController.text.isEmpty ||
-                            _patronymicController.text.isEmpty ||
-                            _birthdateController.text.isEmpty) {
-                          Scaffold.of(context).showSnackBar(new SnackBar(
-                            content: new Text("Заполните все поля"),
-                            duration: Duration(seconds: 2),
-                          ));
-                        } else {
-                          var employeeChild = new EmployeeChild(
-                              _surnameController.text,
-                              _nameController.text,
-                              _patronymicController.text,
-                              _birthdateController.text);
+                    onPressed: () async {
+                      if (_surnameController.text.isEmpty ||
+                          _nameController.text.isEmpty ||
+                          _patronymicController.text.isEmpty ||
+                          _birthdateController.text.isEmpty) {
+                        Scaffold.of(context).showSnackBar(new SnackBar(
+                          content: new Text("Заполните все поля"),
+                          duration: Duration(seconds: 2),
+                        ));
+                      } else {
+                        var employeeChild = new EmployeeChild(
+                          surname: _surnameController.text,
+                          name: _nameController.text,
+                          patronymicName: _patronymicController.text,
+                          birthdate: _birthdateController.text,
+                          parentId: widget.parent.id,
+                        );
 
-                          _listOfEmployeesChildren.add(employeeChild);
-                        }
-                      });
+                        await DBProvider.db.newEmployeeChild(employeeChild);
+                        _listOfEmployeesChildren = await DBProvider.db
+                            .getEmployeeChild(widget.parent.id);
+                      }
+                      setState(() {});
                     }),
               ),
               SizedBox(height: 20.0),

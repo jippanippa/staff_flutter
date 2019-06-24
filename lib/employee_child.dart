@@ -1,36 +1,33 @@
-import 'package:staff_flutter/employee.dart';
-
 class EmployeeChild {
-  String _surname;
-  String _name;
-  String _patronymicName;
-  String _birthdate;
-  Employee _parent;
+  int id;
+  String surname;
+  String name;
+  String patronymicName;
+  String birthdate;
+  int parentId;
 
-  EmployeeChild(this._surname, this._name, this._patronymicName, this._birthdate);
+  EmployeeChild(
+      {this.id,
+      this.surname,
+      this.name,
+      this.patronymicName,
+      this.birthdate,
+      this.parentId});
 
+  factory EmployeeChild.fromMap(Map<String, dynamic> json) => new EmployeeChild(
+      id: json["id"],
+      surname: json["surname"],
+      name: json["name"],
+      patronymicName: json["patronymicName"],
+      birthdate: json["birthdate"],
+      parentId: json["parentId"]);
 
-  EmployeeChild.fromJson(Map jsonMap)
-      : assert(jsonMap['surname'] != null),
-        assert(jsonMap['name'] != null),
-        assert(jsonMap['patronymicName'] != null),
-        assert(jsonMap['birthdate'] != null),
-        _surname = jsonMap['surname'],
-        _name = jsonMap['name'],
-        _patronymicName = jsonMap['patronymicName'],
-        _birthdate = jsonMap['birthdate'];
-
-  Employee get parent => _parent;
-
-  set parent(Employee value) {
-    _parent = value;
-  }
-
-  String get birthdate => _birthdate;
-
-  String get patronymicName => _patronymicName;
-
-  String get name => _name;
-
-  String get surname => _surname;
+  Map<String, dynamic> toMap() => {
+        "id": id,
+        "surname": surname,
+        "name": name,
+        "patronymicName": patronymicName,
+        "birthdate": birthdate,
+        "parentId": parentId
+      };
 }

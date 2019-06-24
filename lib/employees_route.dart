@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:staff_flutter/database_provider.dart';
 import 'package:staff_flutter/employee.dart';
 import 'package:staff_flutter/employee_child.dart';
 import 'package:staff_flutter/employees_children_route.dart';
-
 
 class EmployeesRoute extends StatefulWidget {
   _EmployeesRouteState createState() => _EmployeesRouteState();
@@ -15,23 +15,7 @@ class _EmployeesRouteState extends State<EmployeesRoute> {
   TextEditingController _birthdateController = TextEditingController();
   TextEditingController _positionController = TextEditingController();
 
-
-  static List<EmployeeChild> _testChildrenFirst = [
-    new EmployeeChild("Петров", "Иван", "Петрович", "19.07.1999"),
-  ];
-
-  static List<EmployeeChild> _testChildrenSecond = [
-    new EmployeeChild("Иванов", "Виктор", "Иванович", "31.12.1989"),
-    new EmployeeChild("Иванов", "Петр", "Иванович", "01.01.2001"),
-  ];
-
-  List<Employee> _listOfEmployees = [
-    new Employee("Петров", "Петр", "Петрович", "21.02.1968", "Директор",
-        _testChildrenFirst),
-    new Employee("Иванов", "Иван", "Иванович", "22.05.1958",
-        "Генеральный директор", _testChildrenSecond),
-  ];
-
+  List<Employee> _listOfEmployees = [];
 
   void _navigateToEmployeesChildren(BuildContext context, Employee employee) {
     Navigator.of(context)
@@ -40,6 +24,15 @@ class _EmployeesRouteState extends State<EmployeesRoute> {
         body: EmployeesChildrenRoute(parent: employee),
       );
     }));
+  }
+
+  @override
+  void didChangeDependencies() async {
+    if (_listOfEmployees.isEmpty) {
+      _listOfEmployees = await DBProvider.db.getAllEmployees();
+    }
+
+    setState(() {});
   }
 
   @override
@@ -58,21 +51,21 @@ class _EmployeesRouteState extends State<EmployeesRoute> {
                   new Padding(padding: EdgeInsets.all(10.0)),
                   new Flexible(
                       child: TextField(
-                        controller: _surnameController,
-                        decoration: InputDecoration(hintText: 'Фамилия'),
-                      )),
+                    controller: _surnameController,
+                    decoration: InputDecoration(hintText: 'Фамилия'),
+                  )),
                   new Padding(padding: EdgeInsets.all(10.0)),
                   new Flexible(
                       child: TextField(
-                        controller: _nameController,
-                        decoration: InputDecoration(hintText: 'Имя'),
-                      )),
+                    controller: _nameController,
+                    decoration: InputDecoration(hintText: 'Имя'),
+                  )),
                   new Padding(padding: EdgeInsets.all(10.0)),
                   new Flexible(
                       child: TextField(
-                        controller: _patronymicController,
-                        decoration: InputDecoration(hintText: 'Отчество'),
-                      )),
+                    controller: _patronymicController,
+                    decoration: InputDecoration(hintText: 'Отчество'),
+                  )),
                   new Padding(padding: EdgeInsets.all(10.0)),
                 ],
               ),
@@ -81,49 +74,50 @@ class _EmployeesRouteState extends State<EmployeesRoute> {
                   new Padding(padding: EdgeInsets.all(20.0)),
                   new Flexible(
                       child: TextField(
-                        controller: _birthdateController,
-                        decoration: InputDecoration(hintText: 'Дата рождения'),
-                      )),
+                    controller: _birthdateController,
+                    decoration: InputDecoration(hintText: 'Дата рождения'),
+                  )),
                   new Padding(padding: EdgeInsets.all(20.0)),
                   new Flexible(
                       child: TextField(
-                        controller: _positionController,
-                        decoration: InputDecoration(hintText: 'Должность'),
-                      )),
+                    controller: _positionController,
+                    decoration: InputDecoration(hintText: 'Должность'),
+                  )),
                   new Padding(padding: EdgeInsets.all(20.0)),
                 ],
               ),
               SizedBox(height: 10.0),
               Builder(
-                builder: (context) =>
-                    RaisedButton(
-                        child: Text('Добавить в список'),
-                        color: Colors.red,
-                        textColor: Colors.white,
-                        onPressed: () {
-                          setState(() {
-                            if (_surnameController.text.isEmpty ||
-                                _nameController.text.isEmpty ||
-                                _patronymicController.text.isEmpty ||
-                                _birthdateController.text.isEmpty ||
-                                _positionController.text.isEmpty) {
-                              Scaffold.of(context).showSnackBar(new SnackBar(
-                                content: new Text("Заполните все поля"),
-                                duration: Duration(seconds: 2),
-                              ));
-                            } else {
-                              _listOfEmployees.add(new Employee(
-                                  _surnameController.text,
-                                  _nameController.text,
-                                  _patronymicController.text,
-                                  _birthdateController.text,
-                                  _positionController.text,
-                                  new List<EmployeeChild>()));
-                            }
-                          });
-                        }),
-              ),
+                builder: (context) => RaisedButton(
+                    child: Text('Добавить в список'),
+                    color: Colors.red,
+                    textColor: Colors.white,
+                    onPressed: () async {
+                      if (_surnameController.text.isEmpty ||
+                          _nameController.text.isEmpty ||
+                          _patronymicController.text.isEmpty ||
+                          _birthdateController.text.isEmpty ||
+                          _positionController.text.isEmpty) {
+                        Scaffold.of(context).showSnackBar(new SnackBar(
+                          content: new Text("Заполните все поля"),
+                          duration: Duration(seconds: 2),
+                        ));
+                      } else {
+                        var novyEmployee = new Employee(
+                            surname: _surnameController.text,
+                            name: _nameController.text,
+                            patronymicName: _patronymicController.text,
+                            birthdate: _birthdateController.text,
+                            position: _positionController.text);
 
+                        await DBProvider.db.newEmployee(novyEmployee);
+                        _listOfEmployees =
+                            await DBProvider.db.getAllEmployees();
+                      }
+
+                      setState(() {});
+                    }),
+              ),
               SizedBox(height: 20.0),
               Expanded(
                 child: ListView(
@@ -135,7 +129,9 @@ class _EmployeesRouteState extends State<EmployeesRoute> {
                         onTap: () {
                           _navigateToEmployeesChildren(context, employee);
                         },
-                        title: Text(employee.surname +
+                        title: Text(employee.id.toString() +
+                            ": " +
+                            employee.surname +
                             ' ' +
                             employee.name +
                             ' ' +
