@@ -3,7 +3,7 @@ class EmployeeChild {
   String surname;
   String name;
   String patronymicName;
-  String birthdate;
+  DateTime birthdate;
   int parentId;
 
   EmployeeChild(
@@ -14,12 +14,21 @@ class EmployeeChild {
       this.birthdate,
       this.parentId});
 
+  bool operator ==(otherChild) {
+    return (otherChild is EmployeeChild &&
+        surname == otherChild.surname &&
+        name == otherChild.name &&
+        patronymicName == otherChild.patronymicName &&
+        birthdate == otherChild.birthdate);
+  }
+
+
   factory EmployeeChild.fromMap(Map<String, dynamic> json) => new EmployeeChild(
       id: json["id"],
       surname: json["surname"],
       name: json["name"],
       patronymicName: json["patronymicName"],
-      birthdate: json["birthdate"],
+      birthdate: DateTime.parse(json["birthdate"]),
       parentId: json["parentId"]);
 
   Map<String, dynamic> toMap() => {
@@ -30,4 +39,8 @@ class EmployeeChild {
         "birthdate": birthdate,
         "parentId": parentId
       };
+
+  String getFullName() {
+    return surname + " " + name + " " + patronymicName;
+  }
 }

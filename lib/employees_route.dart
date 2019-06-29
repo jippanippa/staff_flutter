@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:staff_flutter/database_provider.dart';
 import 'package:staff_flutter/employee.dart';
-import 'package:staff_flutter/employee_child.dart';
 import 'package:staff_flutter/employees_children_route.dart';
 
 class EmployeesRoute extends StatefulWidget {
@@ -12,10 +12,29 @@ class _EmployeesRouteState extends State<EmployeesRoute> {
   TextEditingController _surnameController = TextEditingController();
   TextEditingController _nameController = TextEditingController();
   TextEditingController _patronymicController = TextEditingController();
-  TextEditingController _birthdateController = TextEditingController();
+
+  DateFormat _dateFormat = DateFormat('dd MMMM yyyy', 'ru');
+
   TextEditingController _positionController = TextEditingController();
 
   List<Employee> _listOfEmployees = [];
+
+  DateTime selectedBirthdate;
+  DateTime initialDate = DateTime(
+      DateTime.now().year - 18, DateTime.now().month, DateTime.now().day);
+
+  Future<Null> _selectDate(BuildContext context) async {
+    final DateTime picked = await showDatePicker(
+        context: context,
+        initialDate: initialDate,
+        locale: const Locale('ru', 'RU'),
+        firstDate: DateTime(DateTime.now().year - 100),
+        lastDate: initialDate);
+    if (picked != null && picked != selectedBirthdate)
+      setState(() {
+        selectedBirthdate = picked;
+      });
+  }
 
   void _navigateToEmployeesChildren(BuildContext context, Employee employee) {
     Navigator.of(context)
@@ -35,6 +54,69 @@ class _EmployeesRouteState extends State<EmployeesRoute> {
     setState(() {});
   }
 
+  void updateEmployeesList() async {
+    _listOfEmployees = await DBProvider.db.getAllEmployees();
+    setState(() {});
+  }
+
+  Widget makeEmployeeCard(Employee employee) {
+    return Card(
+        elevation: 3.0,
+        margin: EdgeInsets.symmetric(horizontal: 8.0, vertical: 2.0),
+        child: Container(
+          child: makeListTile(employee),
+        ));
+  }
+
+  Widget makeListTile(Employee employee) {
+    return ListTile(
+        onTap: () {
+          _navigateToEmployeesChildren(context, employee);
+        },
+        contentPadding: EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
+        title: Text(
+          employee.getFullName(),
+          style:
+              TextStyle(color: Colors.grey[800], fontWeight: FontWeight.bold),
+        ),
+        subtitle: Row(
+          children: <Widget>[
+            Text(employee.position, style: TextStyle(color: Colors.grey[600]))
+          ],
+        ),
+        trailing: Text(_dateFormat.format(employee.birthdate)));
+  }
+
+  _showRemovalConfirmationDialog(Employee employee) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(
+            "Удалить запись о сотруднике ${employee.surname}?",
+          ),
+          content: Text("Данные детей сотрудника тоже будут удалены"),
+          actions: <Widget>[
+            FlatButton(
+                child: Text("Отмена"),
+                onPressed: () async {
+                  updateEmployeesList();
+                  Navigator.of(context).pop();
+                }),
+            FlatButton(
+              child: Text("Да"),
+              onPressed: () {
+                DBProvider.db.deleteEmployee(employee.id);
+                updateEmployeesList();
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -48,45 +130,59 @@ class _EmployeesRouteState extends State<EmployeesRoute> {
             children: <Widget>[
               Row(
                 children: <Widget>[
-                  new Padding(padding: EdgeInsets.all(10.0)),
-                  new Flexible(
+                  Padding(padding: EdgeInsets.all(10.0)),
+                  Flexible(
                       child: TextField(
                     controller: _surnameController,
-                    decoration: InputDecoration(hintText: 'Фамилия'),
+                    decoration: InputDecoration(
+                      labelText: 'Фамилия',
+                    ),
                   )),
-                  new Padding(padding: EdgeInsets.all(10.0)),
-                  new Flexible(
+                  Padding(padding: EdgeInsets.all(10.0)),
+                  Flexible(
                       child: TextField(
+                    style: TextStyle(fontSize: 14),
                     controller: _nameController,
-                    decoration: InputDecoration(hintText: 'Имя'),
+                    decoration: InputDecoration(
+                      labelText: 'Имя',
+                    ),
                   )),
-                  new Padding(padding: EdgeInsets.all(10.0)),
-                  new Flexible(
+                  Padding(padding: EdgeInsets.all(10.0)),
+                  Flexible(
                       child: TextField(
+                    style: TextStyle(fontSize: 14),
                     controller: _patronymicController,
-                    decoration: InputDecoration(hintText: 'Отчество'),
+                    decoration: InputDecoration(
+                      labelText: 'Отчество',
+                    ),
                   )),
-                  new Padding(padding: EdgeInsets.all(10.0)),
+                  Padding(padding: EdgeInsets.all(10.0)),
                 ],
               ),
               Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: <Widget>[
-                  new Padding(padding: EdgeInsets.all(20.0)),
-                  new Flexible(
+                  Padding(padding: EdgeInsets.all(20.0)),
+                  RaisedButton(
+                    onPressed: () => _selectDate(context),
+                    color: Colors.blue,
+                    textColor: Colors.white,
+                    child: selectedBirthdate == null
+                        ? Text('Дата рождения', style: TextStyle(fontSize: 14))
+                        : Text(_dateFormat.format(selectedBirthdate)),
+                  ),
+                  Padding(padding: EdgeInsets.all(20.0)),
+                  Flexible(
                       child: TextField(
-                    controller: _birthdateController,
-                    decoration: InputDecoration(hintText: 'Дата рождения'),
-                  )),
-                  new Padding(padding: EdgeInsets.all(20.0)),
-                  new Flexible(
-                      child: TextField(
+                    style: TextStyle(fontSize: 14),
                     controller: _positionController,
-                    decoration: InputDecoration(hintText: 'Должность'),
+                    decoration: InputDecoration(
+                      labelText: 'Должность',
+                    ),
                   )),
-                  new Padding(padding: EdgeInsets.all(20.0)),
+                  Padding(padding: EdgeInsets.all(20.0)),
                 ],
               ),
-              SizedBox(height: 10.0),
               Builder(
                 builder: (context) => RaisedButton(
                     child: Text('Добавить в список'),
@@ -96,50 +192,57 @@ class _EmployeesRouteState extends State<EmployeesRoute> {
                       if (_surnameController.text.isEmpty ||
                           _nameController.text.isEmpty ||
                           _patronymicController.text.isEmpty ||
-                          _birthdateController.text.isEmpty ||
                           _positionController.text.isEmpty) {
+                        Scaffold.of(context).showSnackBar(SnackBar(
+                          content: Text("Заполните все поля"),
+                          duration: Duration(seconds: 2),
+                        ));
+                      } else if (selectedBirthdate == null) {
                         Scaffold.of(context).showSnackBar(new SnackBar(
-                          content: new Text("Заполните все поля"),
+                          content: Text("Укажите дату рождения"),
                           duration: Duration(seconds: 2),
                         ));
                       } else {
-                        var novyEmployee = new Employee(
-                            surname: _surnameController.text,
-                            name: _nameController.text,
-                            patronymicName: _patronymicController.text,
-                            birthdate: _birthdateController.text,
-                            position: _positionController.text);
-
-                        await DBProvider.db.newEmployee(novyEmployee);
-                        _listOfEmployees =
-                            await DBProvider.db.getAllEmployees();
+                        var newEmployee = Employee(
+                            surname: _surnameController.text[0].toUpperCase() +
+                                _surnameController.text
+                                    .substring(1)
+                                    .toLowerCase(),
+                            name: _nameController.text[0].toUpperCase() +
+                                _nameController.text.substring(1).toLowerCase(),
+                            patronymicName:
+                                _patronymicController.text[0].toUpperCase() +
+                                    _patronymicController.text
+                                        .substring(1)
+                                        .toLowerCase(),
+                            birthdate: selectedBirthdate,
+                            position:
+                                _positionController.text[0].toUpperCase() +
+                                    _positionController.text
+                                        .substring(1)
+                                        .toLowerCase());
+                        if (_listOfEmployees.contains(newEmployee)) {
+                          Scaffold.of(context).showSnackBar(SnackBar(
+                              content: Text("Такой сотрудник уже указан!"),
+                              duration: Duration(seconds: 2)));
+                        } else {
+                          await DBProvider.db.newEmployee(newEmployee);
+                          _listOfEmployees =
+                              await DBProvider.db.getAllEmployees();
+                        }
                       }
-
                       setState(() {});
                     }),
               ),
-              SizedBox(height: 20.0),
               Expanded(
                 child: ListView(
-                  padding: EdgeInsets.all(10.0),
                   children: _listOfEmployees.reversed.map((employee) {
-                    return SizedBox(
-                      key: Key("key_employees"),
-                      child: ListTile(
-                        onTap: () {
-                          _navigateToEmployeesChildren(context, employee);
-                        },
-                        title: Text(employee.id.toString() +
-                            ": " +
-                            employee.surname +
-                            ' ' +
-                            employee.name +
-                            ' ' +
-                            employee.patronymicName),
-                        subtitle: Text(
-                            employee.position + ' | ' + employee.birthdate),
-                        dense: true,
-                      ),
+                    return Dismissible(
+                      key: Key("key_employee_" + employee.id.toString()),
+                      child: makeEmployeeCard(employee),
+                      confirmDismiss: (direction) {
+                        _showRemovalConfirmationDialog(employee);
+                      },
                     );
                   }).toList(),
                 ),

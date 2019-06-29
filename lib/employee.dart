@@ -3,7 +3,7 @@ class Employee {
   String surname;
   String name;
   String patronymicName;
-  String birthdate;
+  DateTime birthdate;
   String position;
 
   Employee(
@@ -14,12 +14,20 @@ class Employee {
       this.birthdate,
       this.position});
 
+  bool operator ==(otherEmployee) {
+    return (otherEmployee is Employee &&
+        surname == otherEmployee.surname &&
+        name == otherEmployee.name &&
+        patronymicName == otherEmployee.patronymicName &&
+        birthdate == otherEmployee.birthdate);
+  }
+
   factory Employee.fromMap(Map<String, dynamic> json) => new Employee(
       id: json["id"],
       surname: json["surname"],
       name: json["name"],
       patronymicName: json["patronymicName"],
-      birthdate: json["birthdate"],
+      birthdate: DateTime.parse(json["birthdate"]),
       position: json["position"]);
 
   Map<String, dynamic> toMap() => {
@@ -30,4 +38,8 @@ class Employee {
         "birthdate": birthdate,
         "position": position
       };
+
+  String getFullName() {
+    return surname + " " + name + " " + patronymicName;
+  }
 }

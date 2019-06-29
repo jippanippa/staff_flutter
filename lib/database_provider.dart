@@ -21,20 +21,6 @@ class DBProvider {
     return _database;
   }
 
-  initDB() async {
-    Directory documentsDirectory = await getApplicationDocumentsDirectory();
-    String path = join(documentsDirectory.path, "TestDB.db");
-    return await openDatabase(path, version: 1, onOpen: (db) {},
-        onCreate: (Database db, int version) async {
-      await db.execute("CREATE TABLE Client ("
-          "id INTEGER PRIMARY KEY,"
-          "first_name TEXT,"
-          "last_name TEXT,"
-          "blocked BIT"
-          ")");
-    });
-  }
-
   initEmployeesDB() async {
     Directory documentsDirectory = await getApplicationDocumentsDirectory();
     String path = join(documentsDirectory.path, "TestEmployeeDB.db");
@@ -73,7 +59,7 @@ class DBProvider {
           newEmployee.surname,
           newEmployee.name,
           newEmployee.patronymicName,
-          newEmployee.birthdate,
+          newEmployee.birthdate.toIso8601String(),
           newEmployee.position
         ]);
     return raw;
@@ -91,7 +77,7 @@ class DBProvider {
           newEmployeeChild.surname,
           newEmployeeChild.name,
           newEmployeeChild.patronymicName,
-          newEmployeeChild.birthdate,
+          newEmployeeChild.birthdate.toIso8601String(),
           newEmployeeChild.parentId
         ]);
     return raw;
@@ -103,6 +89,22 @@ class DBProvider {
     return res.isNotEmpty ? Employee.fromMap(res.first) : null;
   }
 
+  deleteEmployee(int id) async {
+    final db = await database;
+    deleteEmployeeChildViaParentRemoval(id);
+    db.delete("Employee", where: "id = ?", whereArgs: [id]);
+  }
+
+  deleteEmployeeChild(int id) async {
+    final db = await database;
+    db.delete("EmployeeChild", where: "id = ?", whereArgs: [id]);
+  }
+
+  deleteEmployeeChildViaParentRemoval(int id) async {
+    final db = await database;
+    db.delete("Employee_Child", where: "parentId = ?", whereArgs: [id]);
+  }
+
   Future<List<Employee>> getAllEmployees() async {
     final db = await database;
     var res = await db.query("Employee");
@@ -111,7 +113,7 @@ class DBProvider {
     return list;
   }
 
-  Future<List<EmployeeChild>> getEmployeeChild(int employeeId) async {
+  Future<List<EmployeeChild>> getEmployeeChilden(int employeeId) async {
     final db = await database;
     var res = await db.query("Employee_Child",
         where: "parentId = ?", whereArgs: [employeeId]);
