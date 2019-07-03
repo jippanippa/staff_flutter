@@ -14,10 +14,7 @@ class EmployeesChildrenRoute extends StatefulWidget {
 }
 
 class _EmployeesChildrenRouteState extends State<EmployeesChildrenRoute> {
-  TextEditingController _surnameController = TextEditingController();
-  TextEditingController _nameController = TextEditingController();
-  TextEditingController _patronymicController = TextEditingController();
-  DateFormat _dateFormat = DateFormat('dd MMMM yyyy', 'ru');
+  final DateFormat _dateFormat = DateFormat('dd MMMM yyyy', 'ru');
 
   List<EmployeeChild> _listOfEmployeesChildren = [];
 
@@ -49,7 +46,7 @@ class _EmployeesChildrenRouteState extends State<EmployeesChildrenRoute> {
     setState(() {});
   }
 
-  void updateEmployeesList() async {
+  _updateEmployeesChildrenList() async {
     _listOfEmployeesChildren =
         await DBProvider.db.getEmployeeChilden(widget.parent.id);
     setState(() {});
@@ -75,6 +72,16 @@ class _EmployeesChildrenRouteState extends State<EmployeesChildrenRoute> {
         trailing: Text(_dateFormat.format(employeeChild.birthdate)));
   }
 
+  _showEmployeeChildEntryCreatorDialog() {
+    Navigator.of(context)
+        .push(new MaterialPageRoute<Null>(
+            builder: (BuildContext context) {
+              return EmployeeChildEntryCreatorDialog(parent: widget.parent);
+            },
+            fullscreenDialog: true))
+        .then((value) => _updateEmployeesChildrenList());
+  }
+
   _showRemovalConfirmationDialog(EmployeeChild employeeChild) {
     showDialog(
       context: context,
@@ -88,14 +95,14 @@ class _EmployeesChildrenRouteState extends State<EmployeesChildrenRoute> {
             FlatButton(
                 child: Text("Отмена"),
                 onPressed: () async {
-                  updateEmployeesList();
+                  _updateEmployeesChildrenList();
                   Navigator.of(context).pop();
                 }),
             FlatButton(
               child: Text("Да"),
               onPressed: () {
                 DBProvider.db.deleteEmployeeChild(employeeChild.id);
-                updateEmployeesList();
+                _updateEmployeesChildrenList();
                 Navigator.of(context).pop();
               },
             ),
@@ -116,95 +123,6 @@ class _EmployeesChildrenRouteState extends State<EmployeesChildrenRoute> {
         child: Center(
           child: Column(
             children: <Widget>[
-              Row(
-                children: <Widget>[
-                  new Padding(padding: EdgeInsets.all(10.0)),
-                  new Flexible(
-                      child: TextField(
-                    style: TextStyle(fontSize: 14),
-                    controller: _surnameController,
-                    decoration: InputDecoration(labelText: 'Фамилия'),
-                  )),
-                  new Padding(padding: EdgeInsets.all(10.0)),
-                  new Flexible(
-                      child: TextField(
-                    style: TextStyle(fontSize: 14),
-                    controller: _nameController,
-                    decoration: InputDecoration(labelText: 'Имя'),
-                  )),
-                  new Padding(padding: EdgeInsets.all(10.0)),
-                  new Flexible(
-                      child: TextField(
-                    style: TextStyle(fontSize: 14),
-                    controller: _patronymicController,
-                    decoration: InputDecoration(labelText: 'Отчество'),
-                  )),
-                  new Padding(padding: EdgeInsets.all(10.0)),
-                ],
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
-                  Padding(padding: EdgeInsets.symmetric(vertical: 30.0)),
-                  new RaisedButton(
-                    onPressed: () => _selectDate(context),
-                    color: Colors.blue,
-                    textColor: Colors.white,
-                    child: selectedBirthdate == null
-                        ? Text('Дата рождения')
-                        : Text(_dateFormat.format(selectedBirthdate)),
-                  ),
-                ],
-              ),
-              SizedBox(height: 10.0),
-              Builder(
-                builder: (context) => RaisedButton(
-                    child: Text('Добавить ребёнка'),
-                    color: Colors.red,
-                    textColor: Colors.white,
-                    onPressed: () async {
-                      if (_surnameController.text.isEmpty ||
-                          _nameController.text.isEmpty ||
-                          _patronymicController.text.isEmpty) {
-                        Scaffold.of(context).showSnackBar(new SnackBar(
-                          content: new Text("Заполните все поля"),
-                          duration: Duration(seconds: 2),
-                        ));
-                      } else if (selectedBirthdate == null) {
-                        Scaffold.of(context).showSnackBar(new SnackBar(
-                          content: new Text("Укажите дату рождения"),
-                          duration: Duration(seconds: 2),
-                        ));
-                      } else {
-                        var employeeChild = new EmployeeChild(
-                          surname: _surnameController.text[0].toUpperCase() +
-                              _surnameController.text
-                                  .substring(1)
-                                  .toLowerCase(),
-                          name: _nameController.text[0].toUpperCase() +
-                              _nameController.text.substring(1).toLowerCase(),
-                          patronymicName: _patronymicController.text[0]
-                                  .toUpperCase() +
-                              _nameController.text.substring(1).toLowerCase(),
-                          birthdate: selectedBirthdate,
-                          parentId: widget.parent.id,
-                        );
-
-                        if (_listOfEmployeesChildren.contains(employeeChild)) {
-                          Scaffold.of(context).showSnackBar(new SnackBar(
-                              content: new Text(
-                                  "Такой ребёнок у сотрудника уже указан!"),
-                              duration: Duration(seconds: 2)));
-                        } else {
-                          await DBProvider.db.newEmployeeChild(employeeChild);
-                          _listOfEmployeesChildren = await DBProvider.db
-                              .getEmployeeChilden(widget.parent.id);
-                        }
-                      }
-                      setState(() {});
-                    }),
-              ),
-              SizedBox(height: 20.0),
               Expanded(
                 child: ListView(
                   padding: EdgeInsets.all(10.0),
@@ -224,6 +142,166 @@ class _EmployeesChildrenRouteState extends State<EmployeesChildrenRoute> {
             ],
           ),
         ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _showEmployeeChildEntryCreatorDialog,
+        child: Icon(Icons.add),
+      ),
+    );
+  }
+}
+
+class EmployeeChildEntryCreatorDialog extends StatefulWidget {
+  final Employee parent;
+
+  const EmployeeChildEntryCreatorDialog({@required this.parent})
+      : assert(parent != null);
+
+  @override
+  State<StatefulWidget> createState() => _EmployeeChildEntryCreatorState();
+}
+
+class _EmployeeChildEntryCreatorState
+    extends State<EmployeeChildEntryCreatorDialog> {
+  TextEditingController _surnameController = TextEditingController();
+  TextEditingController _nameController = TextEditingController();
+  TextEditingController _patronymicController = TextEditingController();
+  DateFormat _dateFormat = DateFormat('dd MMMM yyyy', 'ru');
+
+  DateTime selectedBirthdate;
+  DateTime initialDate = DateTime(
+      DateTime.now().year, DateTime.now().month, DateTime.now().day);
+
+  Future<Null> _selectDate(BuildContext context) async {
+    final DateTime picked = await showDatePicker(
+        context: context,
+        initialDate: initialDate,
+        locale: const Locale('ru', 'RU'),
+        firstDate: DateTime(DateTime.now().year -
+            (DateTime.now().year - widget.parent.birthdate.year - 12)),
+        lastDate: initialDate);
+    if (picked != null && picked != selectedBirthdate)
+      setState(() {
+        selectedBirthdate = picked;
+      });
+  }
+
+  _showSnackbar(BuildContext context, String text) {
+    Scaffold.of(context).showSnackBar(new SnackBar(
+      content: Text(text),
+      duration: Duration(seconds: 2),
+    ));
+  }
+
+  _checkIfRequiredDataExists() {
+    return _surnameController.text.isEmpty ||
+        _nameController.text.isEmpty ||
+        _patronymicController.text.isEmpty;
+  }
+
+  _createNewEmployeeChildAndAddItToTheDB(BuildContext context) async {
+    List<EmployeeChild> _listOfEmployeesChildren =
+        await DBProvider.db.getEmployeeChilden(widget.parent.id);
+
+    var newEmployeeChild = EmployeeChild(
+        surname: _surnameController.text[0].toUpperCase() +
+            _surnameController.text.substring(1).toLowerCase(),
+        name: _nameController.text[0].toUpperCase() +
+            _nameController.text.substring(1).toLowerCase(),
+        patronymicName: _patronymicController.text[0].toUpperCase() +
+            _patronymicController.text.substring(1).toLowerCase(),
+        birthdate: selectedBirthdate,
+        parentId: widget.parent.id);
+    if (_listOfEmployeesChildren.contains(newEmployeeChild)) {
+      _showSnackbar(context, "Такой сотрудник уже указан!");
+    } else {
+      await DBProvider.db.newEmployeeChild(newEmployeeChild);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('${widget.parent.surname}: новый ребенок'),
+      ),
+      body: Center(
+        child: ListView(
+          children: <Widget>[
+            Padding(
+              padding: EdgeInsets.symmetric(vertical: 8.0, horizontal: 15.0),
+              child: TextField(
+                controller: _surnameController,
+                style: Theme.of(context).textTheme.display1,
+                decoration: InputDecoration(
+                  labelStyle: Theme.of(context).textTheme.display1,
+                  labelText: 'Фамилия',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(4.0),
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.symmetric(vertical: 8.0, horizontal: 15.0),
+              child: TextField(
+                controller: _nameController,
+                style: Theme.of(context).textTheme.display1,
+                decoration: InputDecoration(
+                  labelStyle: Theme.of(context).textTheme.display1,
+                  labelText: 'Имя',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(4.0),
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.symmetric(vertical: 8.0, horizontal: 15.0),
+              child: TextField(
+                controller: _patronymicController,
+                style: Theme.of(context).textTheme.display1,
+                decoration: InputDecoration(
+                  labelStyle: Theme.of(context).textTheme.display1,
+                  labelText: 'Отчество',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(4.0),
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.symmetric(vertical: 5.0, horizontal: 43.0),
+              child: RaisedButton(
+                onPressed: () => _selectDate(context),
+                color: Colors.blue,
+                textColor: Colors.white,
+                shape: new RoundedRectangleBorder(
+                    borderRadius: new BorderRadius.circular(30.0)),
+                child: selectedBirthdate == null
+                    ? Text('Укажите дату рождения',
+                        style: TextStyle(fontSize: 20))
+                    : Text(_dateFormat.format(selectedBirthdate),
+                        style: TextStyle(fontSize: 20)),
+              ),
+            ),
+          ],
+        ),
+      ),
+      floatingActionButton: Builder(
+        builder: (context) => FloatingActionButton(
+              onPressed: () async {
+                if (_checkIfRequiredDataExists()) {
+                  _showSnackbar(context, "Заполните все поля");
+                } else if (selectedBirthdate == null) {
+                  _showSnackbar(context, "Укажите дату рождения");
+                } else {
+                  await _createNewEmployeeChildAndAddItToTheDB(context);
+                  Navigator.of(context).pop();
+                }
+              },
+              child: Icon(Icons.done),
+            ),
       ),
     );
   }

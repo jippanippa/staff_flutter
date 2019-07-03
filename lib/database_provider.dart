@@ -89,6 +89,14 @@ class DBProvider {
     return res.isNotEmpty ? Employee.fromMap(res.first) : null;
   }
 
+  getEmployeeChildrenCount(int parentId) async {
+    final db = await database;
+    var raw = await db.rawQuery(
+        "SELECT COUNT(*) FROM Employee_Child WHERE parentID = ?", [parentId]);
+    int res = await raw.map((result) => result['COUNT(*)']).toList().first;
+    return res;
+  }
+
   deleteEmployee(int id) async {
     final db = await database;
     deleteEmployeeChildViaParentRemoval(id);
@@ -97,7 +105,7 @@ class DBProvider {
 
   deleteEmployeeChild(int id) async {
     final db = await database;
-    db.delete("EmployeeChild", where: "id = ?", whereArgs: [id]);
+    db.delete("Employee_Child", where: "id = ?", whereArgs: [id]);
   }
 
   deleteEmployeeChildViaParentRemoval(int id) async {
@@ -105,7 +113,7 @@ class DBProvider {
     db.delete("Employee_Child", where: "parentId = ?", whereArgs: [id]);
   }
 
-  Future<List<Employee>> getAllEmployees() async {
+  getAllEmployees() async {
     final db = await database;
     var res = await db.query("Employee");
     List<Employee> list =
@@ -113,7 +121,7 @@ class DBProvider {
     return list;
   }
 
-  Future<List<EmployeeChild>> getEmployeeChilden(int employeeId) async {
+  getEmployeeChilden(int employeeId) async {
     final db = await database;
     var res = await db.query("Employee_Child",
         where: "parentId = ?", whereArgs: [employeeId]);
