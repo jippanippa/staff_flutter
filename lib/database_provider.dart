@@ -121,7 +121,7 @@ class DBProvider {
     return list;
   }
 
-  getEmployeeChilden(int employeeId) async {
+  getEmployeeChildren(int employeeId) async {
     final db = await database;
     var res = await db.query("Employee_Child",
         where: "parentId = ?", whereArgs: [employeeId]);
