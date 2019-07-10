@@ -1,8 +1,7 @@
 # staff_flutter
 
-A new Flutter application.
+Simple flutter application, that allows keeping information about employees and their children.
 
 ## Getting Started
 
-For help getting started with Flutter, view our online
-[documentation](https://flutter.io/).
+Plug and play, simple as that :)
