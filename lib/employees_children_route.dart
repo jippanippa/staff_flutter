@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:staff_flutter/bloc_base.dart';
@@ -18,13 +20,14 @@ class _EmployeesChildrenRouteState extends State<EmployeesChildrenRoute> {
   final DateFormat _dateFormat = DateFormat('dd MMMM yyyy', 'ru');
 
   EmployeeChildBloc employeeChildBloc;
+  StreamSubscription<bool> subscription;
 
   @override
   void initState() {
     super.initState();
     employeeChildBloc = BlocProvider.of<EmployeeChildBloc>(context);
+    subscription = employeeChildBloc.outChildExistenceCheck.listen(null);
   }
-
 
   Widget makeEmployeeChildCard(EmployeeChild employeeChild) {
     return Card(
@@ -50,7 +53,7 @@ class _EmployeesChildrenRouteState extends State<EmployeesChildrenRoute> {
     Navigator.of(context)
         .push(new MaterialPageRoute<Null>(
             builder: (BuildContext context) {
-              return EmployeeChildEntryCreatorDialog(parent: widget.parent, employeeChildBloc: employeeChildBloc);
+              return EmployeeChildEntryCreatorDialog(parent: widget.parent, subscription: subscription, employeeChildBloc: employeeChildBloc);
             },
             fullscreenDialog: true));
   }
@@ -129,8 +132,9 @@ class _EmployeesChildrenRouteState extends State<EmployeesChildrenRoute> {
 class EmployeeChildEntryCreatorDialog extends StatefulWidget {
   final Employee parent;
   final EmployeeChildBloc employeeChildBloc;
+  final StreamSubscription<bool> subscription;
 
-  const EmployeeChildEntryCreatorDialog({@required this.parent, this.employeeChildBloc})
+  const EmployeeChildEntryCreatorDialog({@required this.parent, this.subscription, this.employeeChildBloc})
       : assert(parent != null);
 
   @override
@@ -173,8 +177,18 @@ class _EmployeeChildEntryCreatorState extends State<EmployeeChildEntryCreatorDia
         _patronymicController.text.isEmpty;
   }
 
+  _handleIfExistsValue(BuildContext context, bool exists) async {
+    if (exists) {
+      _showSnackbar(context, "Такой ребёнок у сотрудника уже указан!");
+    } else {
+      Navigator.of(context).pop();
+    }
+  }
+
   _createNewEmployeeChildAndAddItToTheDB(BuildContext context) async {
-    List<EmployeeChild> _listOfEmployeesChildren = [];
+    widget.subscription.onData((exists) {
+      _handleIfExistsValue(context, exists);
+    });
 
     var newEmployeeChild = EmployeeChild(
         surname: _surnameController.text[0].toUpperCase() +
@@ -185,11 +199,9 @@ class _EmployeeChildEntryCreatorState extends State<EmployeeChildEntryCreatorDia
             _patronymicController.text.substring(1).toLowerCase(),
         birthdate: selectedBirthdate,
         parentId: widget.parent.id);
-    if (_listOfEmployeesChildren.contains(newEmployeeChild)) {
-      _showSnackbar(context, "Такой ребёнок уже указан!");
-    } else {
+
       widget.employeeChildBloc.addEmployeeChildExternal.add(newEmployeeChild);
-    }
+
   }
 
   @override
@@ -270,7 +282,6 @@ class _EmployeeChildEntryCreatorState extends State<EmployeeChildEntryCreatorDia
                   _showSnackbar(context, "Укажите дату рождения");
                 } else {
                   _createNewEmployeeChildAndAddItToTheDB(context);
-                  Navigator.of(context).pop();
                 }
               },
               child: Icon(Icons.done),

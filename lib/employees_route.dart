@@ -15,20 +15,22 @@ class _EmployeesRouteState extends State<EmployeesRoute> {
   final DateFormat _dateFormat = DateFormat('dd MMMM yyyy', 'ru');
 
   EmployeeBloc employeeBloc;
+  StreamSubscription<bool> subscription;
 
   @override
   void initState() {
     super.initState();
     employeeBloc = BlocProvider.of<EmployeeBloc>(context);
+    subscription = employeeBloc.outExistenceCheck.listen(null);
   }
 
   _navigateToEmployeesChildren(BuildContext context, Employee employee) {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => BlocProvider(
-          bloc: EmployeeChildBloc(employee.id),
-          child: EmployeesChildrenRoute(parent: employee),
-        ),
+              bloc: EmployeeChildBloc(employee.id),
+              child: EmployeesChildrenRoute(parent: employee),
+            ),
       ),
     );
   }
@@ -61,12 +63,12 @@ class _EmployeesRouteState extends State<EmployeesRoute> {
         trailing: Text(_dateFormat.format(employee.birthdate)));
   }
 
-  _showEmployeeEntryCreatorDialog({EmployeeBloc employeeBloc}) {
-    Navigator.of(context).push(new MaterialPageRoute<Null>(
-        builder: (BuildContext context) {
-          return EmployeeEntryCreatorDialog(employeeBloc: employeeBloc);
-        },
-        fullscreenDialog: true));
+  _showEmployeeEntryCreatorDialog(
+      StreamSubscription subscription, EmployeeBloc employeeBloc) {
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (context) => EmployeeEntryCreatorDialog(
+          subscription: subscription, employeeBloc: employeeBloc),
+    ));
   }
 
   _showRemovalConfirmationDialog(
@@ -122,7 +124,7 @@ class _EmployeesRouteState extends State<EmployeesRoute> {
                             key: Key("key_employee_" + employee.id.toString()),
                             child: makeEmployeeCard(employee),
                             confirmDismiss: (direction) async {
-                              _showRemovalConfirmationDialog(
+                              return _showRemovalConfirmationDialog(
                                   employee, employeeBloc);
                             },
                           );
@@ -136,7 +138,7 @@ class _EmployeesRouteState extends State<EmployeesRoute> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () =>
-            _showEmployeeEntryCreatorDialog(employeeBloc: employeeBloc),
+            _showEmployeeEntryCreatorDialog(subscription, employeeBloc),
         child: Icon(Icons.add),
       ),
     );
@@ -145,8 +147,9 @@ class _EmployeesRouteState extends State<EmployeesRoute> {
 
 class EmployeeEntryCreatorDialog extends StatefulWidget {
   final EmployeeBloc employeeBloc;
+  final StreamSubscription<bool> subscription;
 
-  const EmployeeEntryCreatorDialog({this.employeeBloc});
+  const EmployeeEntryCreatorDialog({this.subscription, this.employeeBloc});
 
   @override
   State<StatefulWidget> createState() => _EmployeeEntryCreatorState();
@@ -158,8 +161,6 @@ class _EmployeeEntryCreatorState extends State<EmployeeEntryCreatorDialog> {
   TextEditingController _patronymicController = TextEditingController();
   TextEditingController _positionController = TextEditingController();
   final DateFormat _dateFormat = DateFormat('dd MMMM yyyy', 'ru');
-
-  StreamSubscription subscription;
 
   DateTime selectedBirthdate;
   DateTime initialDate = DateTime(
@@ -192,7 +193,7 @@ class _EmployeeEntryCreatorState extends State<EmployeeEntryCreatorDialog> {
         _positionController.text.isEmpty;
   }
 
-  _handleIfExistsValue(BuildContext context, bool exists) {
+  _handleIfExistsValue(BuildContext context, bool exists) async {
     if (exists) {
       _showSnackbar(context, "Такой сотрудник уже указан!");
     } else {
@@ -200,27 +201,10 @@ class _EmployeeEntryCreatorState extends State<EmployeeEntryCreatorDialog> {
     }
   }
 
-  @override
-  void initState() {
-    super.initState();
-
-    if (subscription != null) {
-
-      //TODO при повторной инициализации стейта ловим "Bad state: Stream has already been listened to."
-//      subscription = widget.employeeBloc.outExistenceCheck.listen(null);
-    };
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
-    if (subscription != null) subscription.cancel();
-  }
-
   _createNewEmployeeAndAddItToTheDB(BuildContext context) async {
-    if(subscription != null) {
-      subscription.onData((exists) => _handleIfExistsValue(context, exists));
-    }
+    widget.subscription.onData((exists) {
+      _handleIfExistsValue(context, exists);
+    });
 
     var newEmployee = Employee(
         surname: _surnameController.text[0].toUpperCase() +
@@ -321,18 +305,17 @@ class _EmployeeEntryCreatorState extends State<EmployeeEntryCreatorDialog> {
       ),
       floatingActionButton: Builder(
         builder: (context) => FloatingActionButton(
-          onPressed: () async {
-            if (_checkIfRequiredDataExists()) {
-              _showSnackbar(context, "Заполните все поля");
-            } else if (selectedBirthdate == null) {
-              _showSnackbar(context, "Укажите дату рождения");
-            } else {
-              _createNewEmployeeAndAddItToTheDB(context);
-              Navigator.of(context).pop();
-            }
-          },
-          child: Icon(Icons.done),
-        ),
+              onPressed: () async {
+                if (_checkIfRequiredDataExists()) {
+                  _showSnackbar(context, "Заполните все поля");
+                } else if (selectedBirthdate == null) {
+                  _showSnackbar(context, "Укажите дату рождения");
+                } else {
+                  _createNewEmployeeAndAddItToTheDB(context);
+                }
+              },
+              child: Icon(Icons.done),
+            ),
       ),
     );
   }

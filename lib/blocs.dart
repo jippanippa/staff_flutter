@@ -20,8 +20,6 @@ class EmployeeBloc implements BlocBase {
   StreamSink<bool> get _inEmployeeForExistenceCheck => _checkIfEmployeeExistsController.sink;
   Stream<bool> get outExistenceCheck => _checkIfEmployeeExistsController.stream;
 
-  get closeExistenceCheckController =>_checkIfEmployeeExistsController.close();
-
   EmployeeBloc() {
     _getEmployeeList();
 
@@ -57,7 +55,6 @@ class EmployeeBloc implements BlocBase {
     _employeeListController.close();
     _addEmployeeController.close();
     _removeEmployeeController.close();
-
     _checkIfEmployeeExistsController.close();
   }
 }
@@ -75,6 +72,10 @@ class EmployeeChildBloc implements BlocBase {
   StreamController<EmployeeChild> _removeEmployeeChildController = StreamController<EmployeeChild>();
   StreamSink<EmployeeChild> get removeEmployeeChildExternal => _removeEmployeeChildController.sink;
 
+  StreamController<bool> _checkIfEmployeeChildExistsController = StreamController<bool>();
+  StreamSink<bool> get _inChildForExistenceCheck => _checkIfEmployeeChildExistsController.sink;
+  Stream<bool> get outChildExistenceCheck => _checkIfEmployeeChildExistsController.stream;
+
   EmployeeChildBloc(int employeeId) {
     _getEmployeeChildrenList(employeeId);
 
@@ -88,9 +89,17 @@ class EmployeeChildBloc implements BlocBase {
   }
 
   _handleAddEmployeeChild(EmployeeChild employeeChild) async {
-    await DBProvider.db.newEmployeeChild(employeeChild);
-    _getEmployeeChildrenList(employeeChild.parentId);
+    List<EmployeeChild> _listOfEmployeeChildren = await DBProvider.db.getEmployeeChildren(employeeChild.parentId);
+
+    if(!_listOfEmployeeChildren.contains(employeeChild)) {
+      await DBProvider.db.newEmployeeChild(employeeChild);
+      _getEmployeeChildrenList(employeeChild.parentId);
+      _inChildForExistenceCheck.add(false);
+    } else {
+      _inChildForExistenceCheck.add(true);
+    }
   }
+
 
   _handleRemoveEmployeeChild(EmployeeChild employeeChild) async {
     await DBProvider.db.deleteEmployeeChild(employeeChild.id);
@@ -102,5 +111,6 @@ class EmployeeChildBloc implements BlocBase {
     _employeeChildListController.close();
     _addEmployeeChildController.close();
     _removeEmployeeChildController.close();
+    _checkIfEmployeeChildExistsController.close();
   }
 }
