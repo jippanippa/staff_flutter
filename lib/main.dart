@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import 'employees_route.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:staff_flutter/bloc_base.dart';
+import 'package:staff_flutter/blocs.dart';
 
+import 'employees_route.dart';
 
 void main() => runApp(MyApp());
 
 class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-
     return MaterialApp(
       title: 'Сотрудники',
       debugShowCheckedModeBanner: false,
@@ -21,7 +21,10 @@ class MyApp extends StatelessWidget {
         const Locale('en', 'US'),
         const Locale('ru', 'RU'),
       ],
-      home: EmployeesRoute(),
+      home: BlocProvider<EmployeeBloc>(
+        bloc: EmployeeBloc(),
+        child: EmployeesRoute(),
+      ),
     );
   }
 }

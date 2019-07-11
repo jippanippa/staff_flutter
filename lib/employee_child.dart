@@ -22,7 +22,6 @@ class EmployeeChild {
         birthdate == otherChild.birthdate);
   }
 
-
   factory EmployeeChild.fromMap(Map<String, dynamic> json) => new EmployeeChild(
       id: json["id"],
       surname: json["surname"],

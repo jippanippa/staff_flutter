@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:staff_flutter/database_provider.dart';
+import 'package:staff_flutter/bloc_base.dart';
+import 'package:staff_flutter/blocs.dart';
 import 'package:staff_flutter/employee.dart';
 import 'package:staff_flutter/employee_child.dart';
 
@@ -16,40 +19,14 @@ class EmployeesChildrenRoute extends StatefulWidget {
 class _EmployeesChildrenRouteState extends State<EmployeesChildrenRoute> {
   final DateFormat _dateFormat = DateFormat('dd MMMM yyyy', 'ru');
 
-  List<EmployeeChild> _listOfEmployeesChildren = [];
-
-  DateTime selectedBirthdate;
-  DateTime initialDate =
-      DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
-
-  Future<Null> _selectDate(BuildContext context) async {
-    final DateTime picked = await showDatePicker(
-        context: context,
-        initialDate: initialDate,
-        locale: const Locale('ru', 'RU'),
-        firstDate: DateTime(DateTime.now().year -
-            (DateTime.now().year - widget.parent.birthdate.year - 12)),
-        lastDate: initialDate);
-    if (picked != null && picked != selectedBirthdate)
-      setState(() {
-        selectedBirthdate = picked;
-      });
-  }
+  EmployeeChildBloc employeeChildBloc;
+  StreamSubscription<bool> subscription;
 
   @override
-  void didChangeDependencies() async {
-    super.didChangeDependencies();
-    if (_listOfEmployeesChildren.isEmpty) {
-      _listOfEmployeesChildren =
-          await DBProvider.db.getEmployeeChilden(widget.parent.id);
-    }
-    setState(() {});
-  }
-
-  _updateEmployeesChildrenList() async {
-    _listOfEmployeesChildren =
-        await DBProvider.db.getEmployeeChilden(widget.parent.id);
-    setState(() {});
+  void initState() {
+    super.initState();
+    employeeChildBloc = BlocProvider.of<EmployeeChildBloc>(context);
+    subscription = employeeChildBloc.outChildExistenceCheck.listen(null);
   }
 
   Widget makeEmployeeChildCard(EmployeeChild employeeChild) {
@@ -72,17 +49,17 @@ class _EmployeesChildrenRouteState extends State<EmployeesChildrenRoute> {
         trailing: Text(_dateFormat.format(employeeChild.birthdate)));
   }
 
-  _showEmployeeChildEntryCreatorDialog() {
+  _showEmployeeChildEntryCreatorDialog({EmployeeChildBloc employeeChildBloc}) {
     Navigator.of(context)
         .push(new MaterialPageRoute<Null>(
             builder: (BuildContext context) {
-              return EmployeeChildEntryCreatorDialog(parent: widget.parent);
+              return EmployeeChildEntryCreatorDialog(parent: widget.parent, subscription: subscription, employeeChildBloc: employeeChildBloc);
             },
-            fullscreenDialog: true))
-        .then((value) => _updateEmployeesChildrenList());
+            fullscreenDialog: true));
   }
 
-  _showRemovalConfirmationDialog(EmployeeChild employeeChild) {
+  _showRemovalConfirmationDialog(
+      EmployeeChild employeeChild, EmployeeChildBloc employeeChildBloc) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -94,15 +71,13 @@ class _EmployeesChildrenRouteState extends State<EmployeesChildrenRoute> {
           actions: <Widget>[
             FlatButton(
                 child: Text("Отмена"),
-                onPressed: () async {
-                  _updateEmployeesChildrenList();
+                onPressed: () {
                   Navigator.of(context).pop();
                 }),
             FlatButton(
               child: Text("Да"),
               onPressed: () {
-                DBProvider.db.deleteEmployeeChild(employeeChild.id);
-                _updateEmployeesChildrenList();
+                employeeChildBloc.removeEmployeeChildExternal.add(employeeChild);
                 Navigator.of(context).pop();
               },
             ),
@@ -120,49 +95,53 @@ class _EmployeesChildrenRouteState extends State<EmployeesChildrenRoute> {
         backgroundColor: Colors.red,
       ),
       body: Center(
-        child: Center(
-          child: Column(
-            children: <Widget>[
-              Expanded(
-                child: ListView(
-                  padding: EdgeInsets.all(10.0),
-                  children:
-                      _listOfEmployeesChildren.reversed.map((employeeChild) {
-                    return Dismissible(
-                      key: Key(
-                          "key_employee_child" + employeeChild.id.toString()),
-                      child: makeEmployeeChildCard(employeeChild),
-                      confirmDismiss: (direction) {
-                        _showRemovalConfirmationDialog(employeeChild);
-                      },
-                    );
-                  }).toList(),
-                ),
+        child: StreamBuilder<List<EmployeeChild>>(
+          stream: employeeChildBloc.outEmployeeChildrenList,
+          initialData: [],
+          builder: (BuildContext context, AsyncSnapshot<List<EmployeeChild>> snapshot) {
+            return Center(
+              child: Column(
+                children: <Widget>[
+                  Expanded(
+                    child: ListView(
+                      padding: EdgeInsets.all(10.0),
+                      children: snapshot.data.reversed.map((employeeChild) {
+                        return Dismissible(
+                          key: Key("key_employee_child_" + employeeChild.id.toString()),
+                          child: makeEmployeeChildCard(employeeChild),
+                          confirmDismiss: (direction) async {
+                            _showRemovalConfirmationDialog(
+                                employeeChild, employeeChildBloc);
+                          },
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-        ),
+            );
+          }),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _showEmployeeChildEntryCreatorDialog,
-        child: Icon(Icons.add),
-      ),
+          onPressed: () => _showEmployeeChildEntryCreatorDialog(employeeChildBloc: employeeChildBloc),
+          child: Icon(Icons.add)),
     );
   }
 }
 
 class EmployeeChildEntryCreatorDialog extends StatefulWidget {
   final Employee parent;
+  final EmployeeChildBloc employeeChildBloc;
+  final StreamSubscription<bool> subscription;
 
-  const EmployeeChildEntryCreatorDialog({@required this.parent})
+  const EmployeeChildEntryCreatorDialog({@required this.parent, this.subscription, this.employeeChildBloc})
       : assert(parent != null);
 
   @override
   State<StatefulWidget> createState() => _EmployeeChildEntryCreatorState();
 }
 
-class _EmployeeChildEntryCreatorState
-    extends State<EmployeeChildEntryCreatorDialog> {
+class _EmployeeChildEntryCreatorState extends State<EmployeeChildEntryCreatorDialog> {
   TextEditingController _surnameController = TextEditingController();
   TextEditingController _nameController = TextEditingController();
   TextEditingController _patronymicController = TextEditingController();
@@ -177,8 +156,7 @@ class _EmployeeChildEntryCreatorState
         context: context,
         initialDate: initialDate,
         locale: const Locale('ru', 'RU'),
-        firstDate: DateTime(DateTime.now().year -
-            (DateTime.now().year - widget.parent.birthdate.year - 12)),
+        firstDate: DateTime(DateTime.now().year - (DateTime.now().year - widget.parent.birthdate.year - 12)),
         lastDate: initialDate);
     if (picked != null && picked != selectedBirthdate)
       setState(() {
@@ -199,9 +177,18 @@ class _EmployeeChildEntryCreatorState
         _patronymicController.text.isEmpty;
   }
 
+  _handleIfExistsValue(BuildContext context, bool exists) async {
+    if (exists) {
+      _showSnackbar(context, "Такой ребёнок у сотрудника уже указан!");
+    } else {
+      Navigator.of(context).pop();
+    }
+  }
+
   _createNewEmployeeChildAndAddItToTheDB(BuildContext context) async {
-    List<EmployeeChild> _listOfEmployeesChildren =
-        await DBProvider.db.getEmployeeChilden(widget.parent.id);
+    widget.subscription.onData((exists) {
+      _handleIfExistsValue(context, exists);
+    });
 
     var newEmployeeChild = EmployeeChild(
         surname: _surnameController.text[0].toUpperCase() +
@@ -212,11 +199,9 @@ class _EmployeeChildEntryCreatorState
             _patronymicController.text.substring(1).toLowerCase(),
         birthdate: selectedBirthdate,
         parentId: widget.parent.id);
-    if (_listOfEmployeesChildren.contains(newEmployeeChild)) {
-      _showSnackbar(context, "Такой сотрудник уже указан!");
-    } else {
-      await DBProvider.db.newEmployeeChild(newEmployeeChild);
-    }
+
+      widget.employeeChildBloc.addEmployeeChildExternal.add(newEmployeeChild);
+
   }
 
   @override
@@ -296,8 +281,7 @@ class _EmployeeChildEntryCreatorState
                 } else if (selectedBirthdate == null) {
                   _showSnackbar(context, "Укажите дату рождения");
                 } else {
-                  await _createNewEmployeeChildAndAddItToTheDB(context);
-                  Navigator.of(context).pop();
+                  _createNewEmployeeChildAndAddItToTheDB(context);
                 }
               },
               child: Icon(Icons.done),
