@@ -24,6 +24,11 @@ class _EmployeesRouteState extends State<EmployeesRoute> {
     subscription = employeeBloc.outExistenceCheck.listen(null);
   }
 
+  @override
+  void dispose() {
+    subscription.cancel();
+  }
+
   _navigateToEmployeesChildren(BuildContext context, Employee employee) {
     Navigator.of(context).push(
       MaterialPageRoute(

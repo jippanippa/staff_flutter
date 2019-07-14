@@ -29,6 +29,11 @@ class _EmployeesChildrenRouteState extends State<EmployeesChildrenRoute> {
     subscription = employeeChildBloc.outChildExistenceCheck.listen(null);
   }
 
+  @override
+  void dispose() {
+    subscription.cancel();
+  }
+
   Widget makeEmployeeChildCard(EmployeeChild employeeChild) {
     return Card(
         elevation: 3.0,
