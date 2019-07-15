@@ -6,7 +6,7 @@ import 'package:staff_flutter/employee.dart';
 import 'package:staff_flutter/employee_child.dart';
 
 class EmployeeBloc implements BlocBase {
-  StreamController<List<Employee>> _employeeListController = StreamController<List<Employee>>.broadcast();
+  StreamController<List<Employee>> _employeeListController = StreamController<List<Employee>>();
   StreamSink<List<Employee>> get _inAddEmployeeSink => _employeeListController.sink;
   Stream<List<Employee>> get outEmployeeList => _employeeListController.stream;
 
